@@ -152,14 +152,21 @@ try:
 
     @app.route('/')
     def index():
-        return jsonify({
-            "message": "ObraFlow API is running",
-            "endpoints": {
-                "health": "/health",
-                "init_db": "/init-db",
-                "status": "/api-status"
+        """API root - show available endpoints"""
+        return {
+            'name': 'ELP Relatórios API',
+            'version': '2.0',
+            'status': 'online',
+            'endpoints': {
+                'health': '/health',
+                'init_db': '/init-db',
+                'api_status': '/api-status',
+                'login': '/api/login',
+                'dashboard': '/api/dashboard',
+                'projects': '/api/projects',
+                'reports': '/api/reports'
             }
-        })
+        }, 200
     
     @app.route('/health')
     def health_check():
