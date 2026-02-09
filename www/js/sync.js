@@ -139,6 +139,15 @@ class SyncEngine {
 
         } catch (error) {
             console.error('❌ Failed to pull server data:', error);
+
+            // Should prompt user if server is truly down
+            if (error.message.includes('500') || error.message.includes('503')) {
+                this.showSyncNotification('Falha no Servidor. Tente mais tarde.', 'error');
+            } else if (!navigator.onLine) {
+                // Silent fail for offline
+            } else {
+                this.showSyncNotification('Erro ao sincronizar dados', 'error');
+            }
             throw error;
         }
     }

@@ -155,11 +155,12 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Entrando...';
 
             try {
-                // Try online login first if network is available
+                // Check network status first
                 if (navigator.onLine) {
                     try {
+                        console.log('🌐 Attempting online login...');
                         const response = await api.login(username, password);
-                        console.log('✓ Login online successful');
+                        console.log('✅ Online login successful');
 
                         // Success - redirect
                         setTimeout(() => {
@@ -168,46 +169,57 @@
                         return;
 
                     } catch (onlineError) {
-                        console.error('Online login failed:', onlineError);
+                        console.error('❌ Online login failed:', onlineError);
 
-                        // If it's a server error (500, 503), show it. Don't fallback to offline immediately.
-                        if (onlineError.message.includes('500') || onlineError.message.includes('503') || onlineError.message.includes('Service Unavailable')) {
-                            throw new Error('Servidor indisponível no momento. Tente novamente em instantes.');
+                        const errorMsg = onlineError.message || '';
+
+                        // CRITICAL: If server error, STOP and warn user. Do NOT go offline mode if server is just broken.
+                        if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('Service Unavailable') || errorMsg.includes('Internal Server Error')) {
+                            throw new Error('Servidor indisponível temporariamente (Erro 5xx). Tente novamente em 2 minutos.');
                         }
 
-                        // If credentials are wrong, stop here.
-                        if (onlineError.message.includes('401') || onlineError.message.includes('Unauthorized') || onlineError.message.includes('Credenciais')) {
+                        // If invalid credentials, STOP.
+                        if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('Credenciais')) {
                             throw new Error('Usuário ou senha incorretos.');
                         }
 
-                        console.warn('Network/Other error, trying offline fallback...');
-                        // Fallthrough to offline attempt only for network issues
+                        // Only fallback if it's a network error (e.g. timeout, DNS, fetch failed)
+                        if (!errorMsg.includes('Failed to fetch') && !errorMsg.includes('Network')) {
+                            // If it's some other API error, throw it
+                            throw new Error(errorMsg || 'Erro desconhecido no servidor.');
+                        }
+
+                        console.warn('⚠️ Network error detected, trying offline fallback...');
+                        // Fallthrough to offline attempt
                     }
+                } else {
+                    console.log('📴 Offline detected, trying offline login...');
                 }
 
                 // Offline mode / Fallback - use cached credentials
                 try {
                     const response = await api.offlineLogin(username, password);
-                    console.log('✓ Offline login successful');
+                    console.log('✅ Offline login successful');
                     offlineAlert.classList.remove('d-none');
 
                     setTimeout(() => {
                         window.location.href = 'dashboard.html';
-                    }, 1000); // Give user time to see offline message
+                    }, 1000);
                 } catch (offlineError) {
-                    // Normalize error message
-                    if (offlineError.message.includes('No credentials')) {
-                        throw new Error('Nenhuma credencial salva. Conecte-se à internet para o primeiro acesso.');
-                    } else if (offlineError.message.includes('mismatch')) {
+                    console.error('❌ Offline login failed:', offlineError);
+                    // Normalize error message for user
+                    if (offlineError.message && offlineError.message.includes('No credentials')) {
+                        throw new Error('Você precisa fazer login online pelo menos uma vez antes de usar o modo offline.');
+                    } else if (offlineError.message && offlineError.message.includes('mismatch')) {
                         throw new Error('Senha incorreta (modo offline).');
                     } else {
-                        throw offlineError;
+                        throw new Error('Não foi possível conectar ao servidor e não há dados salvos para este usuário.');
                     }
                 }
 
             } catch (error) {
-                console.error('Final Login Error:', error);
-                errorAlert.textContent = error.message.replace('Error:', '').trim() || 'Erro desconhecido ao entrar.';
+                console.error('🛑 Final Login Error:', error);
+                errorAlert.textContent = error.message.replace('Error:', '').trim();
                 errorAlert.classList.remove('d-none');
             } finally {
                 btn.disabled = false;
