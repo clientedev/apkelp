@@ -127,7 +127,24 @@ try:
 
     logging.info("✅ Flask extensions initialized successfully")
 
-    # ROOT LEVEL HEALTH CHECK - Railway needs this at /health (not /api/health)
+    # ROOT LEVEL ROUTES
+    @app.route('/')
+    def index():
+        """API root - show available endpoints"""
+        return {
+            'name': 'ELP Relatórios API',
+            'version': '2.0',
+            'status': 'online',
+            'endpoints': {
+                'health': '/health',
+                'api_status': '/api/status',
+                'login': '/api/login',
+                'dashboard': '/api/dashboard',
+                'projects': '/api/projects',
+                'reports': '/api/reports'
+            }
+        }, 200
+    
     @app.route('/health')
     def health_check():
         """Simple health check for Railway deployment"""
