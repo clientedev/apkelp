@@ -54,9 +54,16 @@ else:
     database_url = "sqlite:///construction_tracker.db"
     logging.info(f"📝 Using SQLite database: {database_url}")
 
-# Database Configuration - PRODUCTION (Railway)
-# Using the URL provided by user
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:KgyYkEmMztCNMSPHVbOpWLTiKZFXYwpB@switchback.proxy.rlwy.net:17107/railway'
+# Database Configuration
+if os.environ.get("DATABASE_URL"):
+    # Production/Railway
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    logging.info(f"✅ Configured with Production Database URL")
+else:
+    # Local Development
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///construction_tracker.db"
+    logging.info(f"📝 Configured with Local SQLite")
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
