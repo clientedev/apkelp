@@ -1,0 +1,31 @@
+{
+  "name": "obraflowv2",
+  "version": "1.0.0",
+  "main": "OneSignalSDKWorker.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clientedev/ObraFlowv2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/clientedev/ObraFlowv2/issues"
+  },
+  "homepage": "https://github.com/clientedev/ObraFlowv2#readme",
+  "description": "",
+  "dependencies": {
+    "@capacitor/android": "^8.0.2",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

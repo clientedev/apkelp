@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ELP Relatórios - Login</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="./static/css/style.css" rel="stylesheet">
+    <link href="./static/css/mobile.css" rel="stylesheet">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./static/manifest.json">
+    <meta name="theme-color" content="#20c1e8">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .logo-container {
+            background: linear-gradient(135deg, #20c1e8 0%, #1a9cb8 100%);
+            padding: 2rem;
+            border-radius: 1rem 1rem 0 0;
+            color: white;
+            text-align: center;
+        }
+
+        .offline-badge {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Offline indicator -->
+    <div id="offlineIndicator" class="offline-badge d-none">
+        <span class="badge bg-warning text-dark">
+            <i class="fas fa-wifi-slash me-1"></i>Offline
+        </span>
+    </div>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="card">
+                    <div class="logo-container">
+                        <i class="fas fa-hard-hat fa-3x mb-3"></i>
+                        <h3 class="mb-0">ELP Relatórios</h3>
+                        <small>Acompanhamento de Obras</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Usuário ou E-mail</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control" id="username" required autofocus>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Senha</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="password" required>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary" id="loginBtn">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Entrar
+                                </button>
+                            </div>
+                        </form>
+
+                        <div id="errorAlert" class="alert alert-danger mt-3 d-none" role="alert"></div>
+                        <div id="offlineAlert" class="alert alert-warning mt-3 d-none" role="alert">
+                            <i class="fas fa-wifi-slash me-2"></i>Modo offline - usando dados em cache
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3 text-muted">
+                    <small>v2.0 - Offline First</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="./js/db.js"></script>
+    <script src="./js/api.js"></script>
+    <script>
+        // Check if already logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                window.location.href = 'dashboard.html';
+            }
+
+            // Monitor network status
+            updateNetworkStatus();
+            window.addEventListener('online', updateNetworkStatus);
+            window.addEventListener('offline', updateNetworkStatus);
+        });
+
+        function updateNetworkStatus() {
+            const indicator = document.getElementById('offlineIndicator');
+            if (!navigator.onLine) {
+                indicator.classList.remove('d-none');
+            } else {
+                indicator.classList.add('d-none');
+            }
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            const errorAlert = document.getElementById('errorAlert');
+            const offlineAlert = document.getElementById('offlineAlert');
+
+            // Reset alerts
+            errorAlert.classList.add('d-none');
+            offlineAlert.classList.add('d-none');
+
+            // UI Loading
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Entrando...';
+
+            try {
+                let response;
+
+                // Try online login first
+                if (navigator.onLine) {
+                    try {
+                        response = await api.login(username, password);
+                        console.log('✓ Login online successful');
+                    } catch (onlineError) {
+                        console.warn('Online login failed, trying offline...', onlineError);
+                        // Try offline login as fallback
+                        response = await api.offlineLogin(username, password);
+                        offlineAlert.classList.remove('d-none');
+                    }
+                } else {
+                    // Offline mode - use cached credentials
+                    response = await api.offlineLogin(username, password);
+                    offlineAlert.classList.remove('d-none');
+                }
+
+                // Success - redirect to dashboard
+                if (response.token || response.offline) {
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 500);
+                }
+
+            } catch (error) {
+                console.error('Login error:', error);
+                errorAlert.textContent = error.message || 'Erro ao fazer login. Verifique suas credenciais.';
+                errorAlert.classList.remove('d-none');
+
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Entrar';
+            }
+        });
+    </script>
+
+</body>
+
+</html>

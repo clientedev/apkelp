@@ -54,14 +54,17 @@ else:
     database_url = "sqlite:///construction_tracker.db"
     logging.info(f"📝 Using SQLite database: {database_url}")
 
-app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+# Database Configuration - PRODUCTION (Railway)
+# Using the URL provided by user
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:KgyYkEmMztCNMSPHVbOpWLTiKZFXYwpB@switchback.proxy.rlwy.net:17107/railway'
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
 app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB max file size
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-segura-aqui'
 
 # File upload configuration - SEMPRE usar uploads/
 UPLOAD_FOLDER = 'uploads'
@@ -104,7 +107,10 @@ try:
         "https://elpconsultoria.pro",
         re.compile(r"https://.*\.elpconsultoria\.pro"),  # Subdomínios
         "http://localhost:5000",
-        "http://127.0.0.1:5000"
+        "http://127.0.0.1:5000",
+        "http://10.0.2.2:5000",
+        "http://localhost",
+        "capacitor://localhost"
     ]
 
     # Se estiver no ambiente Replit, adicionar domínio Replit
@@ -120,6 +126,12 @@ try:
          })
 
     logging.info("✅ Flask extensions initialized successfully")
+
+    # Register API Blueprint
+    from routes_api import api_bp
+    app.register_blueprint(api_bp)
+    logging.info("✅ API Blueprint registered at /api")
+
 except Exception as e:
     logging.error(f"❌ Error initializing Flask extensions: {e}")
     raise
@@ -585,3 +597,6 @@ try:
         logging.warning("⚠️ Scheduler não inicializado - tarefas periódicas desabilitadas")
 except Exception as e:
     logging.warning(f"⚠️ Scheduler initialization skipped: {e}")
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000, debug=True)

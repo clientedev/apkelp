@@ -1,0 +1,252 @@
+/**
+ * API Client for ELP Relatórios
+ * Handles all communication with https://elpconsultoria.pro/api
+ * Supports offline mode with request queuing
+ */
+
+class APIClient {
+    constructor() {
+        this.baseURL = 'https://elpconsultoria.pro/api';
+        this.token = localStorage.getItem('token');
+        this.isOnline = navigator.onLine;
+
+        // Monitor network status
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            this.processPendingRequests();
+        });
+
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+        });
+    }
+
+    /**
+     * Make authenticated API request
+     */
+    async request(endpoint, options = {}) {
+        const url = `${this.baseURL}${endpoint}`;
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+
+        // Add auth token if available
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        const config = {
+            ...options,
+            headers
+        };
+
+        try {
+            // Check if online
+            if (!this.isOnline) {
+                throw new Error('OFFLINE');
+            }
+
+            const response = await fetch(url, config);
+
+            // Handle authentication errors
+            if (response.status === 401) {
+                this.handleUnauthorized();
+                throw new Error('Unauthorized');
+            }
+
+            // Parse response
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP ${response.status}`);
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('API Request failed:', error);
+
+            // Queue request if offline
+            if (error.message === 'OFFLINE' || error.name === 'TypeError') {
+                if (options.method !== 'GET') {
+                    await this.queueRequest(endpoint, options);
+                }
+                throw new Error('Sem conexão. Dados salvos localmente.');
+            }
+
+            throw error;
+        }
+    }
+
+    /**
+     * GET request
+     */
+    async get(endpoint, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'GET'
+        });
+    }
+
+    /**
+     * POST request
+     */
+    async post(endpoint, data, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * PUT request
+     */
+    async put(endpoint, data, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * DELETE request
+     */
+    async delete(endpoint, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'DELETE'
+        });
+    }
+
+    /**
+     * Login and store token
+     */
+    async login(username, password) {
+        const data = await this.post('/login', { username, password });
+
+        if (data.token) {
+            this.token = data.token;
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+
+            // Cache credentials for offline login
+            localStorage.setItem('cached_credentials', btoa(`${username}:${password}`));
+        }
+
+        return data;
+    }
+
+    /**
+     * Offline login using cached credentials
+     */
+    async offlineLogin(username, password) {
+        const cached = localStorage.getItem('cached_credentials');
+
+        if (!cached) {
+            throw new Error('Nenhuma credencial em cache. Conecte-se à internet para fazer login.');
+        }
+
+        const [cachedUser, cachedPass] = atob(cached).split(':');
+
+        if (cachedUser === username && cachedPass === password) {
+            // Use cached user data
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const token = localStorage.getItem('token');
+
+            return {
+                success: true,
+                token,
+                user,
+                offline: true
+            };
+        } else {
+            throw new Error('Credenciais incorretas');
+        }
+    }
+
+    /**
+     * Logout
+     */
+    logout() {
+        this.token = null;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Keep cached credentials for offline login
+    }
+
+    /**
+     * Handle unauthorized (401) responses
+     */
+    handleUnauthorized() {
+        this.logout();
+        window.location.href = 'index.html';
+    }
+
+    /**
+     * Queue request for later processing
+     */
+    async queueRequest(endpoint, options) {
+        const queue = JSON.parse(localStorage.getItem('request_queue') || '[]');
+
+        queue.push({
+            id: Date.now(),
+            endpoint,
+            options,
+            timestamp: new Date().toISOString()
+        });
+
+        localStorage.setItem('request_queue', JSON.stringify(queue));
+        console.log('Request queued:', endpoint);
+    }
+
+    /**
+     * Process pending requests when back online
+     */
+    async processPendingRequests() {
+        const queue = JSON.parse(localStorage.getItem('request_queue') || '[]');
+
+        if (queue.length === 0) return;
+
+        console.log(`Processing ${queue.length} pending requests...`);
+
+        const processed = [];
+        const failed = [];
+
+        for (const item of queue) {
+            try {
+                await this.request(item.endpoint, item.options);
+                processed.push(item.id);
+                console.log('✓ Synced:', item.endpoint);
+            } catch (error) {
+                console.error('✗ Failed to sync:', item.endpoint, error);
+                failed.push(item);
+            }
+        }
+
+        // Remove processed items
+        const remaining = queue.filter(item => !processed.includes(item.id));
+        localStorage.setItem('request_queue', JSON.stringify(remaining));
+
+        if (processed.length > 0) {
+            console.log(`✓ ${processed.length} requests synced successfully`);
+        }
+
+        if (failed.length > 0) {
+            console.warn(`⚠ ${failed.length} requests failed to sync`);
+        }
+    }
+
+    /**
+     * Get pending request count
+     */
+    getPendingCount() {
+        const queue = JSON.parse(localStorage.getItem('request_queue') || '[]');
+        return queue.length;
+    }
+}
+
+// Create global instance
+window.api = new APIClient();

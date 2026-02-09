@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ELP Relatórios - Dashboard</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="./static/css/style.css" rel="stylesheet">
+    <link href="./static/css/mobile.css" rel="stylesheet">
+
+    <!-- PWA -->
+    <link rel="manifest" href="./static/manifest.json">
+    <meta name="theme-color" content="#20c1e8">
+
+    <style>
+        .dashboard-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .badge-status {
+            font-size: 0.75rem;
+            padding: 0.35em 0.65em;
+            border-radius: 0.25rem;
+            color: white;
+        }
+
+        .status-aprovado {
+            background-color: #28a745;
+        }
+
+        .status-pendente {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .status-rascunho {
+            background-color: #6c757d;
+        }
+
+        .sync-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .offline-banner {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark py-3 px-4 shadow-sm" style="background-color: #2c3e50 !important;">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-hard-hat me-2"></i>
+                <span class="fw-bold">ELP Relatórios</span>
+            </a>
+            <div class="d-flex align-items-center">
+                <button id="syncBtn" class="btn btn-outline-light btn-sm me-2" title="Sincronizar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <span class="text-white me-3 d-none d-md-block" id="userNameDisplay">Usuário</span>
+                <button id="logoutBtn" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Offline banner -->
+        <div id="offlineBanner" class="offline-banner d-none">
+            <i class="fas fa-wifi-slash me-2"></i>
+            <strong>Modo Offline</strong> - Dados podem estar desatualizados.
+            <span id="pendingCount"></span>
+        </div>
+
+        <h3 class="mb-4 text-secondary"><i class="fas fa-chart-line me-2"></i>Dashboard</h3>
+
+        <!-- Stats Grid -->
+        <div class="row" id="statsContainer">
+            <div class="col-md-4">
+                <div class="dashboard-card" style="border-left-color: #4e73df;">
+                    <div class="card-label text-primary">🏗️ Obras Ativas</div>
+                    <div class="card-value" id="stats-obras">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="dashboard-card" style="border-left-color: #36b9cc;">
+                    <div class="card-label text-info">📋 Pendentes</div>
+                    <div class="card-value" id="stats-pendentes">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="dashboard-card" style="border-left-color: #1cc88a;">
+                    <div class="card-label text-success">🗓️ Visitas</div>
+                    <div class="card-value" id="stats-visitas">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Reports -->
+        <h4 class="mt-4 mb-3 text-secondary"><i class="fas fa-file-alt me-2"></i>Relatórios Recentes</h4>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div id="recent-reports-list" class="list-group list-group-flush">
+                    <div class="list-group-item text-center py-4">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Carregando...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions FAB -->
+        <div class="position-fixed bottom-0 end-0 p-4" style="z-index: 100;">
+            <button class="btn btn-primary btn-lg rounded-circle shadow"
+                onclick="alert('Em breve: criar novo relatório')">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sync indicator -->
+    <div id="syncIndicator" class="sync-indicator d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Sincronizando...</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="./js/db.js"></script>
+    <script src="./js/api.js"></script>
+    <script>
+        let isOnline = navigator.onLine;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check auth
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Load user
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.nome_completo) {
+                document.getElementById('userNameDisplay').textContent = user.nome_completo;
+            }
+
+            // Monitor network
+            updateNetworkStatus();
+            window.addEventListener('online', () => {
+                isOnline = true;
+                updateNetworkStatus();
+                loadDashboard();
+            });
+            window.addEventListener('offline', () => {
+                isOnline = false;
+                updateNetworkStatus();
+            });
+
+            // Load dashboard data
+            await loadDashboard();
+
+            // Sync button
+            document.getElementById('syncBtn').addEventListener('click', async () => {
+                await syncData();
+                await loadDashboard();
+            });
+
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                if (confirm('Deseja sair?')) {
+                    api.logout();
+                    window.location.href = 'index.html';
+                }
+            });
+        });
+
+        function updateNetworkStatus() {
+            const banner = document.getElementById('offlineBanner');
+            const pendingCount = api.getPendingCount();
+
+            if (!isOnline) {
+                banner.classList.remove('d-none');
+                if (pendingCount > 0) {
+                    document.getElementById('pendingCount').textContent =
+                        `${pendingCount} ação(ões) pendente(s) para sincronizar.`;
+                }
+            } else {
+                banner.classList.add('d-none');
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                let data;
+
+                // Try to fetch from API
+                if (isOnline) {
+                    showSyncIndicator(true);
+                    try {
+                        data = await api.get('/dashboard');
+                        // Cache the data
+                        await db.metadata.setItem('dashboard_cache', data);
+                        await db.metadata.setItem('dashboard_cache_time', new Date().toISOString());
+                    } catch (error) {
+                        console.warn('Failed to fetch from API, using cache:', error);
+                        data = await db.metadata.getItem('dashboard_cache');
+                    }
+                    showSyncIndicator(false);
+                } else {
+                    // Use cached data
+                    data = await db.metadata.getItem('dashboard_cache');
+                }
+
+                if (data) {
+                    renderDashboard(data);
+                } else {
+                    showError('Nenhum dado disponível. Conecte-se à internet para sincronizar.');
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showError('Erro ao carregar dashboard: ' + error.message);
+            }
+        }
+
+        function renderDashboard(data) {
+            // Update stats
+            document.getElementById('stats-obras').textContent = data.obras_ativas || 0;
+            document.getElementById('stats-pendentes').textContent = data.relatorios_pendentes || 0;
+            document.getElementById('stats-visitas').textContent = data.visitas_agendadas || 0;
+
+            // Render recent reports
+            const reportsList = document.getElementById('recent-reports-list');
+
+            if (!data.relatorios_recentes || data.relatorios_recentes.length === 0) {
+                reportsList.innerHTML = `
+                    <div class="list-group-item text-center py-4 text-muted">
+                        <i class="fas fa-inbox me-2"></i>Nenhum relatório recente
+                    </div>
+                `;
+                return;
+            }
+
+            reportsList.innerHTML = data.relatorios_recentes.map(rel => `
+                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <h6 class="mb-1 fw-bold">${rel.numero} - ${rel.titulo || 'Sem título'}</h6>
+                        <p class="mb-1 text-muted small">
+                            <i class="fas fa-building me-1"></i>${rel.projeto_nome || 'Projeto não especificado'}
+                        </p>
+                        <span class="badge badge-status status-${rel.status.toLowerCase().replace(' ', '-')}">${rel.status}</span>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted d-block mb-1">${formatDate(rel.data_relatorio)}</small>
+                        <span class="text-muted small">
+                            <i class="fas fa-user me-1"></i>${rel.autor_nome || 'Desconhecido'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }
+
+        function showError(message) {
+            const reportsList = document.getElementById('recent-reports-list');
+            reportsList.innerHTML = `
+                <div class="list-group-item text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>${message}
+                </div>
+            `;
+        }
+
+        function showSyncIndicator(show) {
+            const indicator = document.getElementById('syncIndicator');
+            if (show) {
+                indicator.classList.remove('d-none');
+            } else {
+                indicator.classList.add('d-none');
+            }
+        }
+
+        async function syncData() {
+            showSyncIndicator(true);
+            try {
+                await api.processPendingRequests();
+                updateNetworkStatus();
+            } catch (error) {
+                console.error('Sync error:', error);
+            }
+            showSyncIndicator(false);
+        }
+    </script>
+</body>
+
+</html>
