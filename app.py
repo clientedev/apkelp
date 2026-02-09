@@ -581,19 +581,25 @@ if os.environ.get("RAILWAY_ENVIRONMENT") or (os.environ.get("DATABASE_URL") and 
     except Exception as e:
         logging.error(f"❌ Railway database initialization error: {e}")
         logging.info("🔄 Continuing with limited functionality...")
-elif os.environ.get("DATABASE_URL"):
-    # Other cloud environments (Replit, etc.)
-    logging.info("☁️ Cloud environment detected - database initialization will be done after routes import")
-    # Database initialization moved to after routes import to avoid circular dependency
-    # try:
-    #     with app.app_context():
-    #         db.create_all()
-    #         logging.info("Database tables created successfully.")
-    #         create_admin_user_safe()
-    #         create_default_checklists()
-    #         logging.info("✅ CLOUD DATABASE INITIALIZATION COMPLETE")
-    # except Exception as e:
-    #     logging.error(f"Database initialization error: {e}")
+# Database Initialization
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    # Railway/Production environment - ALWAYS initialize database
+    logging.info("🚂 RAILWAY ENVIRONMENT DETECTED")
+    logging.info("📊 Initializing database tables...")
+    try:
+        with app.app_context():
+            db.create_all()
+            logging.info("✅ Database tables created successfully!")
+            
+            # Verify tables
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            logging.info(f"📊 Tables in database: {len(tables)}")
+    except Exception as e:
+        logging.error(f"❌ Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
 else:
     # Local development initialization
     logging.info("💻 Local environment detected - initializing database")
