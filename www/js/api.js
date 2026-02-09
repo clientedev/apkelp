@@ -6,7 +6,7 @@
 
 class APIClient {
     constructor() {
-        this.baseURL = 'https://elpconsultoria.pro/api';
+        this.baseURL = 'https://web-production-20dbc.up.railway.app/api';
         this.token = localStorage.getItem('token');
         this.isOnline = navigator.onLine;
 
