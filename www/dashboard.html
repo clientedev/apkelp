@@ -85,7 +85,7 @@
     </style>
 </head>
 
-<body class="bg-light">
+<body class="bg-light" data-page="dashboard">
 
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-dark py-3 px-4 shadow-sm" style="background-color: #2c3e50 !important;">
@@ -157,11 +157,11 @@
         </div>
 
         <!-- Quick Actions FAB -->
-        <div class="position-fixed bottom-0 end-0 p-4" style="z-index: 100;">
-            <button class="btn btn-primary btn-lg rounded-circle shadow"
-                onclick="alert('Em breve: criar novo relatório')">
+        <div class="position-fixed bottom-0 end-0 p-4" style="z-index: 100; margin-bottom: 60px;">
+            <a href="relatorio_novo.html" class="btn btn-primary btn-lg rounded-circle shadow"
+                style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-plus"></i>
-            </button>
+            </a>
         </div>
     </div>
 
@@ -177,6 +177,7 @@
     <script src="./js/db.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/sync.js"></script>
+    <script src="./js/navbar.js"></script>
     <script>
         let isOnline = navigator.onLine;
 
