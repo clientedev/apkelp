@@ -55,14 +55,14 @@ else:
     logging.info(f"📝 Using SQLite database: {database_url}")
 
 # Database Configuration
+# Priority: 1. ENV Variable (Railway) -> 2. Hardcoded (User provided) -> 3. Local SQLite
 if os.environ.get("DATABASE_URL"):
-    # Production/Railway
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    logging.info(f"✅ Configured with Production Database URL")
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://", 1)
+    logging.info(f"✅ Configured with Environment Database URL")
 else:
-    # Local Development
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///construction_tracker.db"
-    logging.info(f"📝 Configured with Local SQLite")
+    # Hardcoded fallback for Railway/Production
+    app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:JOnzMcTseEbFSqICkiAHqtCNmqvafDVS@shuttle.proxy.rlwy.net:28201/railway"
+    logging.info(f"⚠️ Configured with Hardcoded Database URL")
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,
