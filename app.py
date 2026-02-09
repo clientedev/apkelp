@@ -109,10 +109,7 @@ try:
     
     # Initialize CSRF but exempt API routes
     csrf.init_app(app)
-    
-    # Import routes after app init to avoid circular imports
-    from routes.api import api_bp
-    csrf.exempt(api_bp)
+
     
     # Disable CSRF for API routes (Mobile App uses JWT)
     csrf.exempt(app.view_functions.get('api_login_route')) # Explicitly exempt login if needed, but better to exempt blueprint or pattern
@@ -231,6 +228,7 @@ try:
 
     # Register API Blueprint
     from routes_api import api_bp
+    csrf.exempt(api_bp)
     app.register_blueprint(api_bp)
     logging.info("✅ API Blueprint registered at /api")
 
