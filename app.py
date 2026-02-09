@@ -108,26 +108,21 @@ try:
     login_manager.init_app(app)
     
     # Initialize CSRF but exempt API routes
-    csrf.init_app(app)
-
+    # csrf.init_app(app)
     
     # Disable CSRF for API routes (Mobile App uses JWT)
-    csrf.exempt(app.view_functions.get('api_login_route')) # Explicitly exempt login if needed, but better to exempt blueprint or pattern
+    # csrf.exempt(app.view_functions.get('api_login_route')) 
     
     # Exempt all /api/* routes from CSRF - MANUAL GLOBAL TRAP
-    @app.before_request
-    def check_csrf():
-        # Allow all API routes
-        if request.path.startswith('/api/'):
-            return
-        # Allow health checks
-        if request.path.startswith('/health') or request.path.startswith('/init-db'):
-            return
-        # Allow static files
-        if request.path.startswith('/static/'):
-            return
-            
-        csrf.protect()
+    # @app.before_request
+    # def check_csrf():
+    #     if request.path.startswith('/api/'):
+    #         return
+    #     if request.path.startswith('/health') or request.path.startswith('/init-db'):
+    #         return
+    #     if request.path.startswith('/static/'):
+    #         return
+    #     # csrf.protect()
 
     # Configure CORS for geolocation and API calls
     # Restringir origins para segurança - permitir apenas domínios conhecidos
@@ -708,7 +703,7 @@ except Exception as e:
 # Register API Blueprint last
 try:
     from routes_api import api_bp
-    csrf.exempt(api_bp)
+    # csrf.exempt(api_bp)
     app.register_blueprint(api_bp)
     logging.info("✅ API Blueprint registered at /api")
 except ImportError as ie:
